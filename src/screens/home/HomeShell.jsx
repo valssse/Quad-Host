@@ -1,0 +1,316 @@
+import { useEffect, useRef, useState } from 'react'
+import { AnimatePresence, motion } from 'motion/react'
+import StatusBar from '../../components/StatusBar.jsx'
+import Icon from '../../components/Icon.jsx'
+import { ease } from '../../components/motion.js'
+import { BotonMapa } from './ui.jsx'
+import Explorar from './Explorar.jsx'
+import Guardados from './Guardados.jsx'
+import Mensajes from './Mensajes.jsx'
+import Perfil from './Perfil.jsx'
+import Mapa from './Mapa.jsx'
+import { Buscar, Resultados } from './Buscar.jsx'
+import { Detalle, PerfilCasa } from './Detalle.jsx'
+import { Conversacion } from './Chat.jsx'
+import FiltrosPantalla from './FiltrosPantalla.jsx'
+import Alquiler from './Alquiler.jsx'
+import { ALQUILER_INICIAL, QUAD_ID } from '../../data/alquiler.js'
+import { detalle } from '../../data/detalle.js'
+import { MiPerfil, EditarPerfil } from './MiPerfil.jsx'
+import { Solicitudes, Notificaciones } from './Solicitudes.jsx'
+import { NOTIS_INICIAL } from '../../data/solicitudes.js'
+import { perfilInicial } from '../../data/perfil.js'
+import { useLiquidGlass } from '../../components/LiquidGlass.jsx'
+import Skeleton from '../../components/Skeleton.jsx'
+import { FILTROS_VACIOS, contarFiltros } from '../../data/filtros.js'
+import './detalle.css'
+import { GUARDADOS_INICIAL, quad as buscarQuad } from '../../data/quads.js'
+import { ANIOS, UNIVERSIDADES } from '../../data/estudiante.js'
+import './home.css'
+
+const TABS = [
+  { id: 'explorar', label: 'Inicio', icon: 'home', iconOn: 'home-solid' },
+  { id: 'guardados', label: 'Guardados', icon: 'heart', iconOn: 'heart-solid' },
+  { id: 'mensajes', label: 'Mensajes', icon: 'chat-bubble', iconOn: 'chat-bubble-solid' },
+  { id: 'perfil', label: 'Perfil', icon: 'user', iconOn: 'user-solid' },
+]
+const ES_TAB = TABS.map((t) => t.id)
+// Pantallas que se abren encima (sin barra de navegación)
+const NIVEL = { 'mi-perfil': 1, 'editar-perfil': 2, buscar: 1, resultados: 2, filtros: 3, mapa: 3, quad: 4, casa: 5, chat: 6, alquiler: 7, solicitudes: 1, notificaciones: 1 }
+const APILADAS = Object.keys(NIVEL)
+// Pantallas que dibujan su propia barra de estado (foto o mapa detrás)
+const SIN_ESTADO = ['mapa', 'quad', 'alquiler']
+
+/** Barra de navegación tipo vidrio, con la pastilla azul que se desliza al tab activo. */
+export function Navegacion({ tabs = TABS, activo, onChange }) {
+  const [ref, vidrio, filtro] = useLiquidGlass()
+  return (
+    <nav ref={ref} className={`tabbar ${vidrio ? 'tabbar--liquid' : ''}`} style={vidrio} aria-label="Navegación principal">
+      {filtro}
+      {tabs.map((t) => {
+        const on = t.id === activo
+        return (
+          <motion.button
+            key={t.id}
+            type="button"
+            className={`tabbar__tab ${on ? 'tabbar__tab--on' : ''}`}
+            aria-current={on ? 'page' : undefined}
+            whileTap={{ scale: 0.92 }}
+            onClick={() => onChange(t.id)}
+          >
+            {on && <motion.span layoutId="tab-activo" className="tabbar__pill" transition={{ type: 'spring', stiffness: 420, damping: 34 }} />}
+            <Icon name={on ? t.iconOn : t.icon} size={22} />
+            <span>{t.label}</span>
+          </motion.button>
+        )
+      })}
+    </nav>
+  )
+}
+
+/* Tabs: aparecen con un fundido corto. Pantallas apiladas: se deslizan. */
+const variantes = {
+  enter: ({ apilada, dir }) => (apilada ? { opacity: 0, x: dir >= 0 ? 32 : -32 } : { opacity: 0, y: 6 }),
+  center: { opacity: 1, x: 0, y: 0, transition: { duration: 0.36, ease } },
+  exit: ({ apilada, dir }) => ({ opacity: 0, x: apilada ? (dir >= 0 ? -24 : 24) : 0, transition: { duration: 0.18, ease } }),
+}
+
+/**
+ * Home del estudiante (sección "Home" de Figma):
+ * 02 Explorar · 07 Guardados · 08 Mensajes · 09 Perfil · 10 Búsqueda/Resultados · 11 Mapa.
+ */
+export default function HomeShell({ pantalla = 'explorar', sub, cuenta, estudiante, navigate, onAnfitrion, onCerrarSesion }) {
+  const [guardados, setGuardados] = useState(GUARDADOS_INICIAL)
+  const [consulta, setConsulta] = useState('')
+  const [filtros, setFiltros] = useState(FILTROS_VACIOS)
+  const nFiltros = contarFiltros(filtros)
+  // Perfil del estudiante (09): lo que llenó en el onboarding o el del Figma; se edita en 09b
+  const [yo, setYo] = useState(() => perfilInicial(cuenta, estudiante))
+  const [aviso, setAviso] = useState(false)
+  // Flujo de alquiler (R01–R28) y respuestas simuladas a solicitudes rápidas
+  const [alquiler, setAlquiler] = useState(ALQUILER_INICIAL)
+  const [respuesta, setRespuesta] = useState(null)
+  const [noti, setNoti] = useState(null)
+  const notiTimer = useRef(null)
+  const respuestasDadas = useRef(0)
+  // Solicitudes enviadas a otras casas (la de Andrea se deduce del flujo de alquiler) y notificaciones
+  const [enviadas, setEnviadas] = useState([])
+  const [notis, setNotis] = useState(() =>
+    NOTIS_INICIAL.map((n) => ({ ...n, foto: n.fotoDe ? detalle(buscarQuad(n.fotoDe)).anfitrion.foto : null })),
+  )
+  const agregarNoti = (n) => setNotis((l) => [{ ...n, id: `n-${Date.now()}`, hace: 'Ahora', leida: false }, ...l])
+  const marcarLeidas = () => setNotis((l) => (l.some((n) => !n.leida) ? l.map((n) => ({ ...n, leida: true })) : l))
+  const notificar = (n) => {
+    clearTimeout(notiTimer.current)
+    setNoti({ ...n, id: Date.now() })
+    notiTimer.current = setTimeout(() => setNoti(null), 6000)
+    agregarNoti({ foto: n.foto, texto: n.texto, destino: n.destino })
+  }
+  useEffect(() => () => clearTimeout(notiTimer.current), [])
+
+  // Skeleton de referencia al entrar
+  const [cargando, setCargando] = useState(pantalla !== 'mapa')
+  useEffect(() => {
+    const t = setTimeout(() => setCargando(false), 1400)
+    return () => clearTimeout(t)
+  }, [])
+  const alternarGuardado = (id) => setGuardados((g) => (g.includes(id) ? g.filter((x) => x !== id) : [...g, id]))
+
+  // Dirección para las pantallas apiladas
+  const nivel = (p) => NIVEL[p] || 0
+  const [previa, setPrevia] = useState(pantalla)
+  const [dir, setDir] = useState(1)
+  if (previa !== pantalla) {
+    setDir(nivel(pantalla) >= nivel(previa) ? 1 : -1)
+    setPrevia(pantalla)
+  }
+
+  const ir = (p, param, opts) => navigate(param ? `app/${p}/${param}` : `app/${p}`, opts)
+  const cambiarTab = (t) => t !== pantalla && navigate(`app/${t}`, { replace: true })
+
+  // Datos del perfil para las demás pantallas
+  const uni = UNIVERSIDADES.find((u) => u.id === yo.universidad)
+  const perfil = {
+    nombre: yo.nombre.split(' ')[0],
+    nombreCompleto: yo.nombre,
+    detalle: [yo.carrera || 'Tu carrera', `${ANIOS.find((a) => a.id === yo.anio)?.label || '2.º'} año`, uni?.corto || 'UCA'].join(' · '),
+    foto: yo.foto || null,
+    genero: estudiante?.genero || 'mujer',
+  }
+
+  const guardarPerfil = (nuevo) => {
+    setYo(nuevo)
+    setAviso(true)
+    window.history.back()
+  }
+
+  /**
+   * Solicitud rápida desde el detalle (07): la anfitriona responde a los pocos segundos.
+   * Con Andrea sigue el flujo completo (acepta → contrato); con las demás casas se
+   * alterna entre "no aceptó" (R07) y "quiere saber algo más" (R08).
+   */
+  const solicitar = (id) => {
+    const h = detalle(buscarQuad(id)).anfitrion
+    if (id === QUAD_ID) {
+      setAlquiler((s) => ({ ...s, solicitud: 'enviada', respuestaEn: Date.now() }))
+      setTimeout(() => {
+        setAlquiler((s) => (s.solicitud === 'enviada' ? { ...s, solicitud: 'aceptada' } : s))
+        notificar({ foto: h.foto, texto: `${h.corto} aceptó tu solicitud`, destino: ['alquiler', 'aceptada'], accion: () => ir('alquiler', 'aceptada') })
+      }, 6000)
+      return
+    }
+    // Alterna: la primera solicitud se rechaza (R07), la siguiente pide más información (R08)
+    const tipo = respuestasDadas.current++ % 2 ? 'mas-info' : 'rechazada'
+    setEnviadas((l) => [{ quadId: id, enviadaEn: Date.now(), estado: 'revision' }, ...l.filter((x) => x.quadId !== id)])
+    setTimeout(() => {
+      setRespuesta({ quadId: id, tipo })
+      setEnviadas((l) => l.map((x) => (x.quadId === id ? { ...x, estado: tipo } : x)))
+      notificar({
+        foto: h.foto,
+        texto: tipo === 'rechazada' ? `${h.corto} respondió a tu solicitud` : `${h.corto} quiere saber algo más`,
+        destino: ['alquiler', tipo],
+        accion: () => ir('alquiler', tipo),
+      })
+    }, 6000)
+  }
+
+  // Solicitudes activas: las rápidas + la de Andrea (según el flujo de alquiler), la más reciente primero
+  const activas = [
+    ...enviadas,
+    ...(alquiler.solicitud && !alquiler.contratoFirmado
+      ? [{ quadId: QUAD_ID, enviadaEn: alquiler.respuestaEn ?? 0, estado: alquiler.solicitud === 'aceptada' ? 'aceptada' : 'revision' }]
+      : []),
+  ]
+    .filter((x) => x.estado !== 'rechazada')
+    .sort((a, b) => b.enviadaEn - a.enviadaEn)
+  const abrirSolicitud = (x) => {
+    if (x.quadId === QUAD_ID) return ir('alquiler', x.estado === 'aceptada' ? 'aceptada' : 'enviada')
+    ir(x.estado === 'mas-info' ? 'alquiler' : 'quad', x.estado === 'mas-info' ? 'mas-info' : x.quadId)
+  }
+  const abrirNoti = (n) => n.destino && ir(n.destino[0], n.destino[1])
+  const sinLeer = notis.filter((n) => !n.leida).length
+
+  const props = { activas, abrirSolicitud, sinLeer, ir, perfil, guardados, alternarGuardado, consulta, setConsulta, filtros, setFiltros, nFiltros, alquiler, solicitar }
+  const esTab = ES_TAB.includes(pantalla)
+  const oscuro = pantalla === 'explorar' || pantalla === 'guardados'
+
+  const contenido = {
+    explorar: <Explorar {...props} />,
+    guardados: <Guardados {...props} />,
+    mensajes: <Mensajes {...props} />,
+    perfil: <Perfil {...props} onAnfitrion={onAnfitrion} onCerrarSesion={onCerrarSesion} />,
+    buscar: <Buscar {...props} modo={sub} />,
+    resultados: <Resultados {...props} id={sub} />,
+    mapa: <Mapa {...props} sub={sub} />,
+    filtros: <FiltrosPantalla {...props} modo={sub} />,
+    quad: <Detalle {...props} id={sub} />,
+    casa: <PerfilCasa {...props} id={sub} />,
+    chat: <Conversacion {...props} id={sub} />,
+    'mi-perfil': <MiPerfil {...props} yo={yo} aviso={aviso} cerrarAviso={() => setAviso(false)} />,
+    'editar-perfil': <EditarPerfil {...props} yo={yo} guardar={guardarPerfil} />,
+    solicitudes: <Solicitudes solicitudes={activas} abrirSolicitud={abrirSolicitud} />,
+    notificaciones: <Notificaciones notis={notis} abrirNoti={abrirNoti} marcarLeidas={marcarLeidas} />,
+    alquiler: <Alquiler {...props} sub={sub} setAlquiler={setAlquiler} respuesta={respuesta} />,
+  }
+
+  return (
+    <div className="screen home">
+      {/* Barra de estado fija (el mapa dibuja la suya encima de la imagen) */}
+      <AnimatePresence initial={false}>
+        {!SIN_ESTADO.includes(pantalla) && (
+          <motion.div key="status" className={`home__status ${['chat', 'mi-perfil', 'editar-perfil'].includes(pantalla) ? 'home__status--white' : ''}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+            <StatusBar />
+            <div className="safe-top" />
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <div className={`home__stage ${SIN_ESTADO.includes(pantalla) ? 'home__stage--full' : ''}`}>
+        <AnimatePresence initial={false} custom={{ apilada: !esTab || APILADAS.includes(previa), dir }}>
+          <motion.div
+            key={pantalla}
+            className="screen-layer"
+            custom={{ apilada: !esTab, dir }}
+            variants={variantes}
+            initial="enter"
+            animate="center"
+            exit="exit"
+          >
+            {contenido[pantalla] || contenido.explorar}
+          </motion.div>
+        </AnimatePresence>
+        <AnimatePresence>{cargando && <Skeleton key="sk" tipo="estudiante" />}</AnimatePresence>
+      </div>
+
+      {/* Degradado inferior para que la barra se lea sobre el contenido */}
+      <AnimatePresence>
+        {esTab && (
+          <motion.div
+            key={oscuro ? 'oscuro' : 'claro'}
+            className={`home__fade ${oscuro ? 'home__fade--dark' : ''} ${pantalla === 'explorar' ? 'home__fade--blur' : ''}`}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Navegación (+ "Ver Mapa" solo en Inicio) */}
+      <AnimatePresence>
+        {esTab && !cargando && (
+          <motion.div
+            className="home__dock"
+            initial={{ y: 120, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 120, opacity: 0 }}
+            transition={{ type: 'spring', stiffness: 320, damping: 32 }}
+          >
+            <AnimatePresence>
+              {pantalla === 'explorar' && (
+                <motion.div
+                  key="mapa"
+                  initial={{ opacity: 0, y: 10, scale: 0.9 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 10, scale: 0.9 }}
+                  transition={{ duration: 0.25 }}
+                >
+                  <BotonMapa onClick={() => ir('mapa')} />
+                </motion.div>
+              )}
+            </AnimatePresence>
+            <Navegacion activo={pantalla} onChange={cambiarTab} />
+          </motion.div>
+        )}
+      </AnimatePresence>
+      {/* Notificación simulada (respuesta de la anfitriona, recordatorios) */}
+      <AnimatePresence>
+        {noti && (
+          <motion.button
+            key={noti.id}
+            type="button"
+            className="home-noti"
+            initial={{ opacity: 0, y: -40, scale: 0.96 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -40, scale: 0.96 }}
+            transition={{ type: 'spring', stiffness: 320, damping: 30 }}
+            drag="y"
+            dragConstraints={{ top: 0, bottom: 0 }}
+            dragElastic={{ top: 0.6, bottom: 0 }}
+            onDragEnd={(_, info) => info.offset.y < -30 && setNoti(null)}
+            onClick={() => {
+              setNoti(null)
+              noti.accion()
+            }}
+          >
+            <img src={noti.foto} alt="" />
+            <span>
+              <small>Quad · ahora</small>
+              <b>{noti.texto}</b>
+            </span>
+          </motion.button>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}
