@@ -1,32 +1,93 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { AnimatePresence, MotionConfig, motion } from 'motion/react'
 import useHashRoute from './hooks/useHashRoute.js'
 import { screenVariants } from './components/motion.js'
+
+/** El Inicio no se desliza: entra con el barrido de su propio degradado. */
+const revealVariants = {
+  enter: { opacity: 1, x: 0 },
+  center: { opacity: 1, x: 0 },
+  exit: screenVariants.exit,
+}
 import Intro, { INTRO_REVELADO } from './screens/Intro.jsx'
+import Bienvenida from './screens/Bienvenida.jsx'
+import Splash from './screens/Splash.jsx'
+import IniciarSesion from './screens/IniciarSesion.jsx'
+import CrearCuenta from './screens/CrearCuenta.jsx'
+import VerificarCorreo from './screens/VerificarCorreo.jsx'
+import Permisos from './screens/Permisos.jsx'
 import AnfitrionFlow from './screens/anfitrion/AnfitrionFlow.jsx'
 import { ANFITRION_INICIAL } from './data/anfitrion.js'
 import HostShell from './screens/host/HostShell.jsx'
 
-/** App del estudiante (otro GitHub Pages). */
-const URL_ESTUDIANTE = 'https://valssse.github.io/quad/'
-
 /**
- * Quad Host: la parte del anfitrión.
- * Flujo: Onboarding de anfitrión (A01–A22) → Panel del anfitrión.
- * Se abre desde la app del estudiante al elegir "Anfitrión" en "¿Cómo usarás Quad?".
+ * Quad Host: la parte del anfitrión (app aparte de la del estudiante).
+ * Flujo: Bienvenida 1–3 → Inicio → Iniciar sesión | Crear cuenta → Verificar correo → Permisos
+ *        → Onboarding de anfitrión (A01–A22) → Panel del anfitrión.
+ * Esta app no tiene salida hacia la del estudiante.
  */
-const FLOW = ['anfitrion', 'host']
+const FLOW = ['bienvenida', 'inicio', 'iniciar-sesion', 'crear-cuenta', 'verificar-correo', 'permisos', 'anfitrion', 'host']
 
 export default function App() {
-  const { route, param, sub, direction, navigate } = useHashRoute(FLOW, 'anfitrion/tipo')
+  const { route, param, sub, direction, navigate } = useHashRoute(FLOW, 'bienvenida/1')
 
   // Splash animado al abrir la app: 'logo' → 'revelando' (la app ya está detrás) → 'listo'
   const [intro, setIntro] = useState('logo')
   const [anfitrion, setAnfitrion] = useState(ANFITRION_INICIAL)
+  const [account, setAccount] = useState({ name: '', email: '' })
+  const [permissions, setPermissions] = useState({ location: true, notifications: true })
 
-  const irAEstudiante = (hash = '') => window.location.assign(`${URL_ESTUDIANTE}${hash}`)
+  // Dirección interna del carrusel de bienvenida
+  const [slideDir, setSlideDir] = useState(1)
+  const slide = Math.min(Math.max(Number(param) || 1, 1), 3) - 1
+  const goBack = () => window.history.back()
+
+  // Al abrir la app siempre se empieza en la Bienvenida 1 (el hash guardado puede apuntar a la 2 o la 3)
+  useEffect(() => {
+    if (route === 'bienvenida' && param !== '1') navigate('bienvenida/1', { replace: true })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const screens = {
+    bienvenida: (
+      <Bienvenida
+        index={slide}
+        direction={slideDir}
+        onChange={(i) => {
+          setSlideDir(i > slide ? 1 : -1)
+          navigate(`bienvenida/${i + 1}`, { replace: true })
+        }}
+        onSkip={() => navigate('inicio')}
+        onFinish={() => navigate('inicio')}
+        retraso={intro === 'listo' ? 0 : 450}
+      />
+    ),
+    inicio: <Splash onLogin={() => navigate('iniciar-sesion')} onSignup={() => navigate('crear-cuenta')} />,
+    // Cualquier botón (correo, Microsoft o Google) entra al panel del anfitrión
+    'iniciar-sesion': <IniciarSesion onSubmit={() => navigate('host/inicio')} onSignup={() => navigate('crear-cuenta')} />,
+    'crear-cuenta': (
+      <CrearCuenta
+        initialEmail={account.email}
+        onBack={goBack}
+        onLogin={() => navigate('iniciar-sesion')}
+        onSubmit={(data) => {
+          setAccount(data)
+          navigate('verificar-correo')
+        }}
+      />
+    ),
+    'verificar-correo': (
+      <VerificarCorreo email={account.email} onBack={goBack} onChangeEmail={goBack} onVerify={() => navigate('permisos')} />
+    ),
+    permisos: (
+      <Permisos
+        permissions={permissions}
+        onToggle={(id, value) => setPermissions((p) => ({ ...p, [id]: value }))}
+        onBack={goBack}
+        onContinue={() => navigate('anfitrion/tipo')}
+        onSkip={() => navigate('anfitrion/tipo')}
+      />
+    ),
     anfitrion: (
       <AnfitrionFlow
         pasoId={param}
@@ -42,8 +103,7 @@ export default function App() {
         sub={sub}
         navigate={navigate}
         onPublicar={() => navigate('anfitrion/fotos')}
-        onEstudiante={() => irAEstudiante('#/app/explorar')}
-        onCerrarSesion={() => irAEstudiante('#/inicio')}
+        onCerrarSesion={() => navigate('inicio')}
       />
     ),
   }
@@ -64,7 +124,7 @@ export default function App() {
                   key={route}
                   className="screen-layer"
                   custom={direction}
-                  variants={screenVariants}
+                  variants={route === 'inicio' ? revealVariants : screenVariants}
                   initial={intro === 'listo' ? 'enter' : 'center'}
                   animate="center"
                   exit="exit"

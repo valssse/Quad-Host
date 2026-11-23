@@ -225,9 +225,11 @@ export function EditarQuad({ q, guardar, agregarFoto, verComoEstudiante }) {
         </div>
       </motion.div>
       <div className="hs-bar">
-        <Button variant="outline" onClick={verComoEstudiante}>
-          Ver como estudiante
-        </Button>
+        {verComoEstudiante && (
+          <Button variant="outline" onClick={verComoEstudiante}>
+            Ver como estudiante
+          </Button>
+        )}
         <Button onClick={guardar}>Guardar cambios</Button>
       </div>
     </div>

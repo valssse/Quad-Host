@@ -39,7 +39,7 @@ const variantes = {
  * App del anfitrión (sección "Anfitrión · App" de Figma):
  * H01 Panel · H10–H18 Inquilinos · H11–H14 Solicitud · H19 Estancia · H20–H22 Reporte.
  */
-export default function HostShell({ pantalla = 'inicio', sub, navigate, onPublicar, onEstudiante, onCerrarSesion }) {
+export default function HostShell({ pantalla = 'inicio', sub, navigate, onPublicar, onCerrarSesion }) {
   const [estados, setEstados] = useState(() => Object.fromEntries(SOLICITUDES.map((s) => [s.id, s.estado])))
   const [rechazos, setRechazos] = useState([])
   const [confirmadas, setConfirmadas] = useState(() => Object.fromEntries(VISITAS.map((v) => [v.id, v.confirmada])))
@@ -213,13 +213,12 @@ export default function HostShell({ pantalla = 'inicio', sub, navigate, onPublic
         avisar={avisar}
       />
     ),
-    perfil: <PerfilHost {...props} saldo={saldo} onEstudiante={onEstudiante} onCerrarSesion={onCerrarSesion} />,
+    perfil: <PerfilHost {...props} saldo={saldo} onCerrarSesion={onCerrarSesion} />,
     'editar-quad': (
       <EditarQuad
         q={quad}
         agregarFoto={(q, f) => setQuads((qs) => qs.map((x) => (x.id === q.id ? { ...x, fotos: [...x.fotos, f] } : x)))}
         guardar={() => avisar('Cambios guardados. Ya se ven en tu quad.')}
-        verComoEstudiante={() => navigate('app/quad/familia')}
       />
     ),
     destacar: <Destacar q={quad} plan={plan} setPlan={setPlan} ir={ir} />,
@@ -229,7 +228,7 @@ export default function HostShell({ pantalla = 'inicio', sub, navigate, onPublic
         key={casaVersion}
         id="familia"
         ir={ir}
-        anfitrion={{ verComoEstudiante: () => navigate('app/casa/familia'), editar: () => ir('editar-casa') }}
+        anfitrion={{ editar: () => ir('editar-casa') }}
       />
     ),
     'editar-casa': (

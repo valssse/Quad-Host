@@ -575,9 +575,11 @@ export function PerfilCasa({ id, ir, anfitrion }) {
 
       {anfitrion ? (
         <div className="dt-bar dt-bar--single hc-bar--host">
-          <Button variant="outline" onClick={anfitrion.verComoEstudiante}>
-            Ver como estudiante
-          </Button>
+          {anfitrion.verComoEstudiante && (
+            <Button variant="outline" onClick={anfitrion.verComoEstudiante}>
+              Ver como estudiante
+            </Button>
+          )}
           <Button onClick={anfitrion.editar}>Editar convivencia</Button>
         </div>
       ) : (

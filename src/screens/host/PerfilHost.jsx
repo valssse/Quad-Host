@@ -22,7 +22,7 @@ function Fila({ icon, titulo, texto, onClick }) {
 }
 
 /** P01 · Perfil del anfitrión. */
-export function PerfilHost({ ir, saldo, onEstudiante, onCerrarSesion }) {
+export function PerfilHost({ ir, saldo, onCerrarSesion }) {
   const grupos = [
     {
       titulo: 'Mi casa',
@@ -63,17 +63,6 @@ export function PerfilHost({ ir, saldo, onEstudiante, onCerrarSesion }) {
             Ver perfil de la casa
           </motion.button>
         </motion.section>
-
-        <motion.button type="button" className="host-cta" variants={fadeUp} whileTap={{ scale: 0.99 }} onClick={onEstudiante}>
-          <span className="host-cta__icon">
-            <Icon name="user-solid" size={22} />
-          </span>
-          <span className="option__texts">
-            <span className="option__title">¿También buscas quad?</span>
-            <span className="option__desc">Cambia a modo estudiante con la misma cuenta</span>
-          </span>
-          <Icon name="nav-arrow-right" size={18} className="host-cta__chevron" />
-        </motion.button>
 
         {grupos.map((g) => (
           <motion.section key={g.titulo} className="profile-group" variants={fadeUp}>
