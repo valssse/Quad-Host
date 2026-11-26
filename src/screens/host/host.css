@@ -2328,3 +2328,8 @@
 .hs-chat .hs-sheet small {
   font-size: inherit;
 }
+
+span.hs-hello__avatar {
+  display: block;
+  overflow: hidden;
+}

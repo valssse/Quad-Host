@@ -1,15 +1,12 @@
 /* Datos de ejemplo del panel del anfitrión (sección "Anfitrión · App" de Figma). */
-import andrea from '../assets/personas/andrea.jpg'
-import sofia from '../assets/personas/sofia.jpg'
-import cuartoFamilia from '../assets/quads/cuarto-familia.jpg'
-import cuartoBalcon from '../assets/quads/cuarto-balcon.jpg'
-import casaTranquila from '../assets/quads/casa-tranquila.jpg'
-import fotoFachada from '../assets/quads/cuarto-madreselva.jpg'
-import fotoSala from '../assets/quads/cuarto-bano-propio.jpg'
+import { foto } from './fotos.js'
+
+const casa = (n) => foto(`casa-martinez/${n}`)
 
 export const ANFITRIONA = {
   nombre: 'Andrea',
-  foto: andrea,
+  nombreCompleto: 'Andrea Martínez',
+  foto: null,
   casa: 'Jardines de Guadalupe',
 }
 
@@ -25,10 +22,10 @@ export const SEMANA = {
 export const MIS_QUADS = [
   {
     id: 'familia',
-    titulo: 'Quad privado en casa de familia',
+    titulo: 'Cuarto con TV en casa de familia',
     precio: 115,
-    foto: cuartoFamilia,
-    fotos: [cuartoFamilia, fotoSala, fotoFachada],
+    foto: casa('cuarto-tv'),
+    fotos: [casa('cuarto-tv'), casa('sala'), casa('comedor')],
     estado: 'publicado',
     datos: '48 vistas · 3 solicitudes',
     semana: '48 vistas esta semana',
@@ -44,19 +41,19 @@ export const MIS_QUADS = [
   },
   {
     id: 'escritorio',
-    titulo: 'Quad con escritorio',
-    precio: 130,
-    foto: cuartoBalcon,
-    fotos: [cuartoBalcon, fotoSala],
+    titulo: 'Cuarto con escritorio y ventana',
+    precio: 110,
+    foto: casa('cuarto-escritorio'),
+    fotos: [casa('cuarto-escritorio'), casa('barra')],
     estado: 'revision',
     datos: 'Lo revisamos en menos de 24 h',
     semana: 'En revisión · aún no aparece en Explorar',
     secciones: [
-      { icon: 'bed-fill', titulo: 'Tipo de quad', texto: 'Quad privado · escritorio y balcón' },
+      { icon: 'bed-fill', titulo: 'Tipo de quad', texto: 'Quad privado · escritorio y ventana' },
       { icon: 'check-circle-fill', titulo: 'Qué incluye', texto: 'Internet, agua y luz' },
       { icon: 'shield-check-fill', titulo: 'Reglas de la casa', texto: '5 reglas · llegada antes de las 10 p. m.' },
       { icon: 'map-pin-fill', titulo: 'Ubicación', texto: 'Jardines de Guadalupe · 4 min a la Peatonal' },
-      { icon: 'dollar-circle-fill', titulo: 'Precio y depósito', texto: '$130 al mes · depósito de $130' },
+      { icon: 'dollar-circle-fill', titulo: 'Precio y depósito', texto: '$110 al mes · depósito de $110' },
       { icon: 'calendar-fill', titulo: 'Disponibilidad', texto: 'Desde el 10 de enero de 2027' },
     ],
   },
@@ -64,8 +61,8 @@ export const MIS_QUADS = [
     id: 'pequena',
     titulo: 'Habitación pequeña',
     precio: 95,
-    foto: casaTranquila,
-    fotos: [casaTranquila, fotoFachada],
+    foto: casa('sala-2'),
+    fotos: [casa('sala-2'), casa('escaleras')],
     estado: 'pausado',
     datos: 'Pausado desde el 2 de nov',
     semana: 'Pausado · no aparece en Explorar',
@@ -141,7 +138,7 @@ export const MASCOTAS_CASA = [
   { id: 'gatos', nombre: 'Gatos', cantidad: 1 },
 ]
 
-export const BANNER_FOTO = cuartoBalcon
+export const BANNER_FOTO = casa('fachada')
 
 /* ---------- Solicitudes (H10–H14) ---------- */
 const OK = 'ok'
@@ -152,7 +149,8 @@ export const SOLICITUDES = [
     id: 'sofia',
     nombre: 'Sofía Ramírez',
     corto: 'Sofía',
-    foto: sofia,
+    foto: null,
+    iniciales: 'SR',
     carrera: 'Ingeniería Industrial',
     anio: '2.º año',
     ciudad: 'Santa Ana',
@@ -318,7 +316,7 @@ export const REPORTES = {
     fecha: '10 de nov',
     meta: 'Marcela Pineda · Habitación pequeña · 10 de nov, 7:40 a. m.',
     texto: 'Desde ayer el agua de la ducha sale fría todo el tiempo. Ya revisé el interruptor del calentador y está encendido.',
-    fotos: [fotoFachada, fotoSala],
+    fotos: [casa('pasillo'), casa('entrada')],
     atendido: false,
     respuesta: '',
     pasos: [
@@ -380,7 +378,8 @@ export const CHATS_HOST = [
     id: 'sofia',
     nombre: 'Sofía Ramírez',
     corto: 'Sofía',
-    foto: sofia,
+    foto: null,
+    iniciales: 'SR',
     rol: 'Estudiante · Ingeniería Industrial · UCA',
     quadId: 'familia',
     quad: 'Quad privado en casa de familia',

@@ -3,6 +3,7 @@ import Icon from '../../components/Icon.jsx'
 import { fadeUp, stagger } from '../../components/motion.js'
 import { ANFITRIONA, BANNER_FOTO, SEMANA } from '../../data/host.js'
 import { Avatar, Estado } from './ui.jsx'
+import Iniciales from '../../components/Iniciales.jsx'
 
 const toque = { whileTap: { scale: 0.98 } }
 
@@ -24,7 +25,13 @@ export default function Panel({ ir, quads, solicitudes, visitas, totalCobro, inq
     <div className="home-screen hs">
       <motion.div className="home-scroll hs-panel" variants={stagger} initial="hidden" animate="show">
         <motion.header className="hs-hello" variants={fadeUp}>
-          <img src={ANFITRIONA.foto} alt="" className="hs-hello__avatar" />
+          {ANFITRIONA.foto ? (
+            <img src={ANFITRIONA.foto} alt="" className="hs-hello__avatar" />
+          ) : (
+            <span className="hs-hello__avatar">
+              <Iniciales nombre={ANFITRIONA.nombreCompleto} style={{ fontSize: 16 }} />
+            </span>
+          )}
           <span className="hs-hello__text">
             <small>
               {saludo()}, {ANFITRIONA.nombre}

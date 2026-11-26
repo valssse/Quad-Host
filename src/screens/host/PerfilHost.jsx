@@ -5,6 +5,7 @@ import Button from '../../components/Button.jsx'
 import { fadeUp, stagger } from '../../components/motion.js'
 import { ANFITRIONA, CUENTA_RETIRO, PERFIL_HOST, RESENAS_RECIBIDAS, VERIFICACION } from '../../data/host.js'
 import { Cabecera, Hoja, Tarjeta } from './ui.jsx'
+import Iniciales from '../../components/Iniciales.jsx'
 
 const dinero = (n) => `${n < 0 ? '−' : '+'}$${Math.abs(n).toFixed(2)}`
 
@@ -50,7 +51,9 @@ export function PerfilHost({ ir, saldo, onCerrarSesion }) {
         </motion.h1>
 
         <motion.section className="profile-card" variants={fadeUp}>
-          <motion.img src={ANFITRIONA.foto} alt="" className="profile-card__avatar" initial={{ scale: 0.85, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ type: 'spring', stiffness: 300, damping: 22, delay: 0.1 }} />
+          <motion.span className="profile-card__avatar" initial={{ scale: 0.85, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ type: 'spring', stiffness: 300, damping: 22, delay: 0.1 }} >
+            {ANFITRIONA.foto ? <img src={ANFITRIONA.foto} alt="" /> : <Iniciales nombre={ANFITRIONA.nombreCompleto} style={{ fontSize: 28 }} />}
+          </motion.span>
           <div className="profile-card__name">
             <h2>{PERFIL_HOST.nombre}</h2>
             <p>{PERFIL_HOST.desde}</p>
